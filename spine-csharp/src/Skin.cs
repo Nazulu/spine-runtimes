@@ -36,10 +36,12 @@ namespace Spine {
 	/// <summary>Stores attachments by slot index and attachment name.</summary>
 	public class Skin {
 		internal String name;
-		private Dictionary<KeyValuePair<int, String>, Attachment> attachments =
+		protected Dictionary<KeyValuePair<int, String>, Attachment> attachments =
 			new Dictionary<KeyValuePair<int, String>, Attachment>(AttachmentComparer.Instance);
 
 		public String Name { get { return name; } }
+
+        public Dictionary<KeyValuePair<int, String>, Attachment> Attachments { get { return attachments; } }
 
 		public Skin (String name) {
 			if (name == null) throw new ArgumentNullException("name cannot be null.");
