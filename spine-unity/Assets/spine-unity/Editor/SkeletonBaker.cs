@@ -40,6 +40,7 @@ using Spine;
 /// FFD (Unity does not provide access to BlendShapes with code)
 /// Color Keys (Maybe one day when Unity supports full FBX standard and provides access with code)
 /// InheritScale (Never.  Unity and Spine do scaling very differently)
+/// Draw Order Keyframes
 
 /// </summary>
 public static class SkeletonBaker {
@@ -131,7 +132,7 @@ public static class SkeletonBaker {
 					unusedClipNames.Remove(clip.name);
 				} else {
 					AssetDatabase.AddObjectToAsset(clip, controller);
-#if UNITY_5_0
+#if UNITY_5
 					controller.AddMotion(clip);
 #else
 					UnityEditorInternal.AnimatorController.AddAnimationClipToController(controller, clip);
@@ -359,6 +360,7 @@ public static class SkeletonBaker {
 
 		if (skeletonDataAsset.controller != null) {
 			controller = (UnityEditor.Animations.AnimatorController)skeletonDataAsset.controller;
+			controllerPath = AssetDatabase.GetAssetPath(controller);
 		} else {
 			if (File.Exists(controllerPath)) {
 				if (EditorUtility.DisplayDialog("Controller Overwrite Warning", "Unknown Controller already exists at: " + controllerPath, "Update", "Overwrite")) {
@@ -376,6 +378,7 @@ public static class SkeletonBaker {
 
 		if (skeletonDataAsset.controller != null) {
 			controller = (UnityEditorInternal.AnimatorController)skeletonDataAsset.controller;
+			controllerPath = AssetDatabase.GetAssetPath(controller);
 		} else {
 			if (File.Exists(controllerPath)) {
 				if (EditorUtility.DisplayDialog("Controller Overwrite Warning", "Unknown Controller already exists at: " + controllerPath, "Update", "Overwrite")) {

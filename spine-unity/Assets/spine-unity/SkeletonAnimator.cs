@@ -15,6 +15,10 @@ public class SkeletonAnimator : SkeletonRenderer, ISkeletonAnimation {
 	public enum MixMode { AlwaysMix, MixNext, SpineStyle }
 	public MixMode[] layerMixModes = new MixMode[0];
 
+	public Skeleton GetSkeleton () {
+		return this.skeleton;
+
+	}
 	public event UpdateBonesDelegate UpdateLocal {
 		add { _UpdateLocal += value; }
 		remove { _UpdateLocal -= value; }
@@ -34,8 +38,15 @@ public class SkeletonAnimator : SkeletonRenderer, ISkeletonAnimation {
 	protected event UpdateBonesDelegate _UpdateWorld;
 	protected event UpdateBonesDelegate _UpdateComplete;
 
+	public Skeleton Skeleton {
+		get {
+			return this.skeleton;
+		}
+	}
+
 	Dictionary<string, Spine.Animation> animationTable = new Dictionary<string, Spine.Animation>();
 	Animator animator;
+	float lastTime;
 
 	public override void Reset () {
 		base.Reset();
@@ -52,7 +63,7 @@ public class SkeletonAnimator : SkeletonRenderer, ISkeletonAnimation {
 
 		animator = GetComponent<Animator>();
 
-
+		lastTime = Time.time;
 	}
 
 	void Update () {
@@ -62,12 +73,13 @@ public class SkeletonAnimator : SkeletonRenderer, ISkeletonAnimation {
 		if (layerMixModes.Length != animator.layerCount) {
 			System.Array.Resize<MixMode>(ref layerMixModes, animator.layerCount);
 		}
+		float deltaTime = Time.time - lastTime;
 
 		skeleton.Update(Time.deltaTime);
 
 		//apply
 		int layerCount = animator.layerCount;
-		float deltaTime = Time.deltaTime;
+		
 		for (int i = 0; i < layerCount; i++) {
 
 			float layerWeight = animator.GetLayerWeight(i);
@@ -173,5 +185,7 @@ public class SkeletonAnimator : SkeletonRenderer, ISkeletonAnimation {
 		if (_UpdateComplete != null) {
 			_UpdateComplete(this);
 		}
+
+		lastTime = Time.time;
 	}
 }
