@@ -36,7 +36,7 @@ namespace Spine {
 	/// <summary>Stores attachments by slot index and attachment name.</summary>
 	public class Skin {
 		internal String name;
-		private Dictionary<AttachmentKeyTuple, Attachment> attachments =
+		protected Dictionary<AttachmentKeyTuple, Attachment> attachments =
 			new Dictionary<AttachmentKeyTuple, Attachment>(AttachmentKeyTupleComparer.Instance);
 
 		public String Name { get { return name; } }
