@@ -211,7 +211,7 @@ public class SkeletonRenderer : MonoBehaviour {
 			int attachmentVertexCount, attachmentTriangleCount;
 			bool worldScaleXIsPositive = bone.worldScaleX >= 0f;
 			bool worldScaleYIsPositive = bone.worldScaleY >= 0f;
-			bool worldScaleIsSameSigns = (worldScaleXIsPositive && worldScaleYIsPositive) || 
+			bool worldScaleIsSameSigns = (worldScaleXIsPositive && worldScaleYIsPositive) ||
 										 (!worldScaleXIsPositive && !worldScaleYIsPositive);
 			bool flip = frontFacing && ((bone.worldFlipX != bone.worldFlipY) == worldScaleIsSameSigns);
 			attachmentsFlipStateTemp.Items[i] = flip;
@@ -247,7 +247,7 @@ public class SkeletonRenderer : MonoBehaviour {
 #else
 			Material material = (rendererObject.GetType() == typeof(Material)) ? (Material)rendererObject : (Material)((AtlasRegion)rendererObject).page.rendererObject;
 #endif
-			if ((lastMaterial != null && lastMaterial.GetInstanceID() != material.GetInstanceID()) || 
+			if ((lastMaterial != null && lastMaterial.GetInstanceID() != material.GetInstanceID()) ||
 				(submeshSeparatorSlotsCount > 0 && submeshSeparatorSlots.Contains(slot))) {
 				addSubmeshArgumentsTemp.Add(
 					new LastState.AddSubmeshArguments(lastMaterial, submeshStartSlotIndex, i, submeshTriangleCount, submeshFirstVertex, false)
@@ -266,7 +266,7 @@ public class SkeletonRenderer : MonoBehaviour {
 		addSubmeshArgumentsTemp.Add(
 			new LastState.AddSubmeshArguments(lastMaterial, submeshStartSlotIndex, drawOrderCount, submeshTriangleCount, submeshFirstVertex, true)
 			);
-		
+
 		bool mustUpdateMeshStructure = CheckIfMustUpdateMeshStructure(attachmentsTriangleCountTemp, attachmentsFlipStateTemp, addSubmeshArgumentsTemp);
 		if (mustUpdateMeshStructure) {
 			submeshMaterials.Clear();
@@ -305,7 +305,7 @@ public class SkeletonRenderer : MonoBehaviour {
 		} else {
 			// Too many vertices, zero the extra.
 			Vector3 zero = Vector3.zero;
-			for (int i = vertexCount, n = lastState.vertexCount ; i < n; i++)
+			for (int i = vertexCount, n = lastState.vertexCount; i < n; i++)
 				vertices[i] = zero;
 		}
 		lastState.vertexCount = vertexCount;
@@ -320,162 +320,179 @@ public class SkeletonRenderer : MonoBehaviour {
 		float a = skeleton.a * 255, r = skeleton.r, g = skeleton.g, b = skeleton.b;
 
 		Vector3 meshBoundsMin;
-		meshBoundsMin.x = float.MaxValue;
-		meshBoundsMin.y = float.MaxValue;
-		meshBoundsMin.z = zSpacing > 0f ? 0f : zSpacing * (drawOrderCount - 1);
 		Vector3 meshBoundsMax;
-		meshBoundsMax.x = float.MinValue;
-		meshBoundsMax.y = float.MinValue;
-		meshBoundsMax.z = zSpacing < 0f ? 0f : zSpacing * (drawOrderCount - 1);
-		for (int i = 0; i < drawOrderCount; i++) {
-			Slot slot = drawOrder.Items[i];
-			Attachment attachment = slot.attachment;
-			RegionAttachment regionAttachment = attachment as RegionAttachment;
-			if (regionAttachment != null) {
-				regionAttachment.ComputeWorldVertices(slot.bone, tempVertices);
-
-				float z = i * zSpacing;
-				vertices[vertexIndex].x = tempVertices[RegionAttachment.X1];
-				vertices[vertexIndex].y = tempVertices[RegionAttachment.Y1];
-				vertices[vertexIndex].z = z;
-				vertices[vertexIndex + 1].x = tempVertices[RegionAttachment.X4];
-				vertices[vertexIndex + 1].y = tempVertices[RegionAttachment.Y4];
-				vertices[vertexIndex + 1].z = z;
-				vertices[vertexIndex + 2].x = tempVertices[RegionAttachment.X2];
-				vertices[vertexIndex + 2].y = tempVertices[RegionAttachment.Y2];
-				vertices[vertexIndex + 2].z = z;
-				vertices[vertexIndex + 3].x = tempVertices[RegionAttachment.X3];
-				vertices[vertexIndex + 3].y = tempVertices[RegionAttachment.Y3];
-				vertices[vertexIndex + 3].z = z;
-
-				color.a = (byte)(a * slot.a * regionAttachment.a);
-				color.r = (byte)(r * slot.r * regionAttachment.r * color.a);
-				color.g = (byte)(g * slot.g * regionAttachment.g * color.a);
-				color.b = (byte)(b * slot.b * regionAttachment.b * color.a);
-				if (slot.data.blendMode == BlendMode.additive) color.a = 0;
-				colors[vertexIndex] = color;
-				colors[vertexIndex + 1] = color;
-				colors[vertexIndex + 2] = color;
-				colors[vertexIndex + 3] = color;
-
-				float[] regionUVs = regionAttachment.uvs;
-				uvs[vertexIndex].x = regionUVs[RegionAttachment.X1];
-				uvs[vertexIndex].y = regionUVs[RegionAttachment.Y1];
-				uvs[vertexIndex + 1].x = regionUVs[RegionAttachment.X4];
-				uvs[vertexIndex + 1].y = regionUVs[RegionAttachment.Y4];
-				uvs[vertexIndex + 2].x = regionUVs[RegionAttachment.X2];
-				uvs[vertexIndex + 2].y = regionUVs[RegionAttachment.Y2];
-				uvs[vertexIndex + 3].x = regionUVs[RegionAttachment.X3];
-				uvs[vertexIndex + 3].y = regionUVs[RegionAttachment.Y3];
-
-				// Calculate min/max X
-				if (tempVertices[RegionAttachment.X1] < meshBoundsMin.x)
-					meshBoundsMin.x = tempVertices[RegionAttachment.X1];
-				else if (tempVertices[RegionAttachment.X1] > meshBoundsMax.x)
-					meshBoundsMax.x = tempVertices[RegionAttachment.X1];
-				if (tempVertices[RegionAttachment.X2] < meshBoundsMin.x)
-					meshBoundsMin.x = tempVertices[RegionAttachment.X2];
-				else if (tempVertices[RegionAttachment.X2] > meshBoundsMax.x)
-					meshBoundsMax.x = tempVertices[RegionAttachment.X2];
-				if (tempVertices[RegionAttachment.X3] < meshBoundsMin.x)
-					meshBoundsMin.x = tempVertices[RegionAttachment.X3];
-				else if (tempVertices[RegionAttachment.X3] > meshBoundsMax.x)
-					meshBoundsMax.x = tempVertices[RegionAttachment.X3];
-				if (tempVertices[RegionAttachment.X4] < meshBoundsMin.x)
-					meshBoundsMin.x = tempVertices[RegionAttachment.X4];
-				else if (tempVertices[RegionAttachment.X4] > meshBoundsMax.x)
-					meshBoundsMax.x = tempVertices[RegionAttachment.X4];
-
-				// Calculate min/max Y
-				if (tempVertices[RegionAttachment.Y1] < meshBoundsMin.y)
-					meshBoundsMin.y = tempVertices[RegionAttachment.Y1];
-				else if (tempVertices[RegionAttachment.Y1] > meshBoundsMax.y)
-					meshBoundsMax.y = tempVertices[RegionAttachment.Y1];
-				if (tempVertices[RegionAttachment.Y2] < meshBoundsMin.y)
-					meshBoundsMin.y = tempVertices[RegionAttachment.Y2];
-				else if (tempVertices[RegionAttachment.Y2] > meshBoundsMax.y)
-					meshBoundsMax.y = tempVertices[RegionAttachment.Y2];
-				if (tempVertices[RegionAttachment.Y3] < meshBoundsMin.y)
-					meshBoundsMin.y = tempVertices[RegionAttachment.Y3];
-				else if (tempVertices[RegionAttachment.Y3] > meshBoundsMax.y)
-					meshBoundsMax.y = tempVertices[RegionAttachment.Y3];
-				if (tempVertices[RegionAttachment.Y4] < meshBoundsMin.y)
-					meshBoundsMin.y = tempVertices[RegionAttachment.Y4];
-				else if (tempVertices[RegionAttachment.Y4] > meshBoundsMax.y)
-					meshBoundsMax.y = tempVertices[RegionAttachment.Y4];
-
-				vertexIndex += 4;
+		if (vertexCount == 0) {
+			meshBoundsMin = new Vector3(0, 0, 0);
+			meshBoundsMax = new Vector3(0, 0, 0);
+		} else {
+			meshBoundsMin.x = int.MaxValue;
+			meshBoundsMin.y = int.MaxValue;
+			meshBoundsMax.x = int.MinValue;
+			meshBoundsMax.y = int.MinValue;
+			if (zSpacing > 0f) {
+				meshBoundsMin.z = 0f;
+				meshBoundsMax.z = zSpacing * (drawOrderCount - 1);
 			} else {
-				if (!renderMeshes)
-					continue;
-				MeshAttachment meshAttachment = attachment as MeshAttachment;
-				if (meshAttachment != null) {
-					int meshVertexCount = meshAttachment.vertices.Length;
-					if (tempVertices.Length < meshVertexCount)
-						this.tempVertices = tempVertices = new float[meshVertexCount];
-					meshAttachment.ComputeWorldVertices(slot, tempVertices);
+				meshBoundsMin.z = zSpacing * (drawOrderCount - 1);
+				meshBoundsMax.z = 0f;
+			}
+			int i = 0;
+			do {
+				Slot slot = drawOrder.Items[i];
+				Attachment attachment = slot.attachment;
+				RegionAttachment regionAttachment = attachment as RegionAttachment;
+				if (regionAttachment != null) {
+					regionAttachment.ComputeWorldVertices(slot.bone, tempVertices);
 
-					color.a = (byte)(a * slot.a * meshAttachment.a);
-					color.r = (byte)(r * slot.r * meshAttachment.r * color.a);
-					color.g = (byte)(g * slot.g * meshAttachment.g * color.a);
-					color.b = (byte)(b * slot.b * meshAttachment.b * color.a);
-					if (slot.data.blendMode == BlendMode.additive) color.a = 0;
-
-					float[] meshUVs = meshAttachment.uvs;
 					float z = i * zSpacing;
-					for (int ii = 0; ii < meshVertexCount; ii += 2, vertexIndex++) {
-						vertices[vertexIndex].x = tempVertices[ii];
-						vertices[vertexIndex].y = tempVertices[ii + 1];
-						vertices[vertexIndex].z = z;
-						colors[vertexIndex] = color;
-						uvs[vertexIndex].x = meshUVs[ii];
-						uvs[vertexIndex].y = meshUVs[ii + 1];
+					float x1 = tempVertices[RegionAttachment.X1], y1 = tempVertices[RegionAttachment.Y1];
+					float x2 = tempVertices[RegionAttachment.X2], y2 = tempVertices[RegionAttachment.Y2];
+					float x3 = tempVertices[RegionAttachment.X3], y3 = tempVertices[RegionAttachment.Y3];
+					float x4 = tempVertices[RegionAttachment.X4], y4 = tempVertices[RegionAttachment.Y4];
+					vertices[vertexIndex].x = x1;
+					vertices[vertexIndex].y = y1;
+					vertices[vertexIndex].z = z;
+					vertices[vertexIndex + 1].x = x4;
+					vertices[vertexIndex + 1].y = y4;
+					vertices[vertexIndex + 1].z = z;
+					vertices[vertexIndex + 2].x = x2;
+					vertices[vertexIndex + 2].y = y2;
+					vertices[vertexIndex + 2].z = z;
+					vertices[vertexIndex + 3].x = x3;
+					vertices[vertexIndex + 3].y = y3;
+					vertices[vertexIndex + 3].z = z;
 
-						if (tempVertices[ii] < meshBoundsMin.x)
-							meshBoundsMin.x = tempVertices[ii];
-						else if (tempVertices[ii] > meshBoundsMax.x)
-							meshBoundsMax.x = tempVertices[ii];
-						if (tempVertices[ii + 1]< meshBoundsMin.y)
-							meshBoundsMin.y = tempVertices[ii + 1];
-						else if (tempVertices[ii + 1] > meshBoundsMax.y)
-							meshBoundsMax.y = tempVertices[ii + 1];
-					}
+					color.a = (byte)(a * slot.a * regionAttachment.a);
+					color.r = (byte)(r * slot.r * regionAttachment.r * color.a);
+					color.g = (byte)(g * slot.g * regionAttachment.g * color.a);
+					color.b = (byte)(b * slot.b * regionAttachment.b * color.a);
+					if (slot.data.blendMode == BlendMode.additive) color.a = 0;
+					colors[vertexIndex] = color;
+					colors[vertexIndex + 1] = color;
+					colors[vertexIndex + 2] = color;
+					colors[vertexIndex + 3] = color;
+
+					float[] regionUVs = regionAttachment.uvs;
+					uvs[vertexIndex].x = regionUVs[RegionAttachment.X1];
+					uvs[vertexIndex].y = regionUVs[RegionAttachment.Y1];
+					uvs[vertexIndex + 1].x = regionUVs[RegionAttachment.X4];
+					uvs[vertexIndex + 1].y = regionUVs[RegionAttachment.Y4];
+					uvs[vertexIndex + 2].x = regionUVs[RegionAttachment.X2];
+					uvs[vertexIndex + 2].y = regionUVs[RegionAttachment.Y2];
+					uvs[vertexIndex + 3].x = regionUVs[RegionAttachment.X3];
+					uvs[vertexIndex + 3].y = regionUVs[RegionAttachment.Y3];
+
+					// Calculate min/max X
+					if (x1 < meshBoundsMin.x)
+						meshBoundsMin.x = x1;
+					else if (x1 > meshBoundsMax.x)
+						meshBoundsMax.x = x1;
+					if (x2 < meshBoundsMin.x)
+						meshBoundsMin.x = x2;
+					else if (x2 > meshBoundsMax.x)
+						meshBoundsMax.x = x2;
+					if (x3 < meshBoundsMin.x)
+						meshBoundsMin.x = x3;
+					else if (x3 > meshBoundsMax.x)
+						meshBoundsMax.x = x3;
+					if (x4 < meshBoundsMin.x)
+						meshBoundsMin.x = x4;
+					else if (x4 > meshBoundsMax.x)
+						meshBoundsMax.x = x4;
+
+					// Calculate min/max Y
+					if (y1 < meshBoundsMin.y)
+						meshBoundsMin.y = y1;
+					else if (y1 > meshBoundsMax.y)
+						meshBoundsMax.y = y1;
+					if (y2 < meshBoundsMin.y)
+						meshBoundsMin.y = y2;
+					else if (y2 > meshBoundsMax.y)
+						meshBoundsMax.y = y2;
+					if (y3 < meshBoundsMin.y)
+						meshBoundsMin.y = y3;
+					else if (y3 > meshBoundsMax.y)
+						meshBoundsMax.y = y3;
+					if (y4 < meshBoundsMin.y)
+						meshBoundsMin.y = y4;
+					else if (y4 > meshBoundsMax.y)
+						meshBoundsMax.y = y4;
+
+					vertexIndex += 4;
 				} else {
-					SkinnedMeshAttachment skinnedMeshAttachment = attachment as SkinnedMeshAttachment;
-					if (skinnedMeshAttachment != null) {
-						int meshVertexCount = skinnedMeshAttachment.uvs.Length;
+					if (!renderMeshes)
+						continue;
+					MeshAttachment meshAttachment = attachment as MeshAttachment;
+					if (meshAttachment != null) {
+						int meshVertexCount = meshAttachment.vertices.Length;
 						if (tempVertices.Length < meshVertexCount)
 							this.tempVertices = tempVertices = new float[meshVertexCount];
-						skinnedMeshAttachment.ComputeWorldVertices(slot, tempVertices);
+						meshAttachment.ComputeWorldVertices(slot, tempVertices);
 
-						color.a = (byte)(a * slot.a * skinnedMeshAttachment.a);
-						color.r = (byte)(r * slot.r * skinnedMeshAttachment.r * color.a);
-						color.g = (byte)(g * slot.g * skinnedMeshAttachment.g * color.a);
-						color.b = (byte)(b * slot.b * skinnedMeshAttachment.b * color.a);
+						color.a = (byte)(a * slot.a * meshAttachment.a);
+						color.r = (byte)(r * slot.r * meshAttachment.r * color.a);
+						color.g = (byte)(g * slot.g * meshAttachment.g * color.a);
+						color.b = (byte)(b * slot.b * meshAttachment.b * color.a);
 						if (slot.data.blendMode == BlendMode.additive) color.a = 0;
 
-						float[] meshUVs = skinnedMeshAttachment.uvs;
+						float[] meshUVs = meshAttachment.uvs;
 						float z = i * zSpacing;
 						for (int ii = 0; ii < meshVertexCount; ii += 2, vertexIndex++) {
-							vertices[vertexIndex].x = tempVertices[ii];
-							vertices[vertexIndex].y = tempVertices[ii + 1];
+							float x = tempVertices[ii], y = tempVertices[ii + 1];
+							vertices[vertexIndex].x = x;
+							vertices[vertexIndex].y = y;
 							vertices[vertexIndex].z = z;
 							colors[vertexIndex] = color;
 							uvs[vertexIndex].x = meshUVs[ii];
 							uvs[vertexIndex].y = meshUVs[ii + 1];
 
-							if (tempVertices[ii] < meshBoundsMin.x)
-								meshBoundsMin.x = tempVertices[ii];
-							else if (tempVertices[ii] > meshBoundsMax.x)
-								meshBoundsMax.x = tempVertices[ii];
-							if (tempVertices[ii + 1]< meshBoundsMin.y)
-								meshBoundsMin.y = tempVertices[ii + 1];
-							else if (tempVertices[ii + 1] > meshBoundsMax.y)
-								meshBoundsMax.y = tempVertices[ii + 1];
+							if (x < meshBoundsMin.x)
+								meshBoundsMin.x = x;
+							else if (x > meshBoundsMax.x)
+								meshBoundsMax.x = x;
+							if (y < meshBoundsMin.y)
+								meshBoundsMin.y = y;
+							else if (y > meshBoundsMax.y)
+								meshBoundsMax.y = y;
+						}
+					} else {
+						SkinnedMeshAttachment skinnedMeshAttachment = attachment as SkinnedMeshAttachment;
+						if (skinnedMeshAttachment != null) {
+							int meshVertexCount = skinnedMeshAttachment.uvs.Length;
+							if (tempVertices.Length < meshVertexCount)
+								this.tempVertices = tempVertices = new float[meshVertexCount];
+							skinnedMeshAttachment.ComputeWorldVertices(slot, tempVertices);
+
+							color.a = (byte)(a * slot.a * skinnedMeshAttachment.a);
+							color.r = (byte)(r * slot.r * skinnedMeshAttachment.r * color.a);
+							color.g = (byte)(g * slot.g * skinnedMeshAttachment.g * color.a);
+							color.b = (byte)(b * slot.b * skinnedMeshAttachment.b * color.a);
+							if (slot.data.blendMode == BlendMode.additive) color.a = 0;
+
+							float[] meshUVs = skinnedMeshAttachment.uvs;
+							float z = i * zSpacing;
+							for (int ii = 0; ii < meshVertexCount; ii += 2, vertexIndex++) {
+								float x = tempVertices[ii], y = tempVertices[ii + 1];
+								vertices[vertexIndex].x = x;
+								vertices[vertexIndex].y = y;
+								vertices[vertexIndex].z = z;
+								colors[vertexIndex] = color;
+								uvs[vertexIndex].x = meshUVs[ii];
+								uvs[vertexIndex].y = meshUVs[ii + 1];
+
+								if (x < meshBoundsMin.x)
+									meshBoundsMin.x = x;
+								else if (x > meshBoundsMax.x)
+									meshBoundsMax.x = x;
+								if (y < meshBoundsMin.y)
+									meshBoundsMin.y = y;
+								else if (y > meshBoundsMax.y)
+									meshBoundsMax.y = y;
+							}
 						}
 					}
 				}
-			}
+			} while (++i < drawOrderCount);
 		}
 
 		// Double buffer mesh.
@@ -558,7 +575,7 @@ public class SkeletonRenderer : MonoBehaviour {
 		useMesh1 = !useMesh1;
 	}
 
-	private bool CheckIfMustUpdateMeshStructure(ExposedList<int> attachmentsTriangleCountTemp, ExposedList<bool> attachmentsFlipStateTemp, ExposedList<LastState.AddSubmeshArguments> addSubmeshArgumentsTemp) {
+	private bool CheckIfMustUpdateMeshStructure (ExposedList<int> attachmentsTriangleCountTemp, ExposedList<bool> attachmentsFlipStateTemp, ExposedList<LastState.AddSubmeshArguments> addSubmeshArgumentsTemp) {
 		// Check if any mesh settings were changed
 		bool mustUpdateMeshStructure =
 			immutableTriangles != (useMesh1 ? lastState.immutableTrianglesMesh1 : lastState.immutableTrianglesMesh2);
@@ -754,7 +771,7 @@ public class SkeletonRenderer : MonoBehaviour {
 			public int firstVertex;
 			public bool lastSubmesh;
 
-			public AddSubmeshArguments(Material material, int startSlot, int endSlot, int triangleCount, int firstVertex, bool lastSubmesh) {
+			public AddSubmeshArguments (Material material, int startSlot, int endSlot, int triangleCount, int firstVertex, bool lastSubmesh) {
 				this.material = material;
 				this.startSlot = startSlot;
 				this.endSlot = endSlot;
@@ -763,14 +780,14 @@ public class SkeletonRenderer : MonoBehaviour {
 				this.lastSubmesh = lastSubmesh;
 			}
 
-			public bool Equals(ref AddSubmeshArguments other) {
+			public bool Equals (ref AddSubmeshArguments other) {
 				return
 					!ReferenceEquals(material, null) &&
 					!ReferenceEquals(other.material, null) &&
 					material.GetInstanceID() == other.material.GetInstanceID() &&
-					startSlot == other.startSlot && 
-					endSlot == other.endSlot && 
-					triangleCount == other.triangleCount && 
+					startSlot == other.startSlot &&
+					endSlot == other.endSlot &&
+					triangleCount == other.triangleCount &&
 					firstVertex == other.firstVertex;
 			}
 		}
