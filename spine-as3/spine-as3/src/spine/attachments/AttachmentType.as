@@ -36,7 +36,7 @@ public class AttachmentType {
 	public static const regionsequence:AttachmentType = new AttachmentType(1, "regionsequence");
 	public static const boundingbox:AttachmentType = new AttachmentType(2, "boundingbox");
 	public static const mesh:AttachmentType = new AttachmentType(3, "mesh");
-	public static const skinnedmesh:AttachmentType = new AttachmentType(4, "skinnedmesh");
+	public static const weightedmesh:AttachmentType = new AttachmentType(4, "weightedmesh");
 
 	public var ordinal:int;
 	public var name:String;

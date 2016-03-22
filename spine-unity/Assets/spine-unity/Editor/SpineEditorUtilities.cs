@@ -149,6 +149,7 @@ public class SpineEditorUtilities : AssetPostprocessor {
 
 	public static string editorPath = "";
 	public static string editorGUIPath = "";
+	static HashSet<string> assetsImportedInWrongState;
 	static Dictionary<int, GameObject> skeletonRendererTable;
 	static Dictionary<int, SkeletonUtilityBone> skeletonUtilityBoneTable;
 	static Dictionary<int, BoundingBoxFollower> boundingBoxFollowerTable;
@@ -173,6 +174,7 @@ public class SpineEditorUtilities : AssetPostprocessor {
 
 		Icons.Initialize();
 
+		assetsImportedInWrongState = new HashSet<string>();
 		skeletonRendererTable = new Dictionary<int, GameObject>();
 		skeletonUtilityBoneTable = new Dictionary<int, SkeletonUtilityBone>();
 		boundingBoxFollowerTable = new Dictionary<int, BoundingBoxFollower>();
@@ -254,8 +256,34 @@ public class SpineEditorUtilities : AssetPostprocessor {
 	}
 
 	static void OnPostprocessAllAssets (string[] imported, string[] deleted, string[] moved, string[] movedFromAssetPaths) {
-		ImportSpineContent(imported, false);
+		if (imported.Length == 0)
+			return;
+
+		// In case user used "Assets -> Reimport All", during the import process,
+		// asset database is not initialized until some point. During that period,
+		// all attempts to load any assets using API (i.e. AssetDatabase.LoadAssetAtPath)
+		// will return null, and as result, assets won't be loaded even if they actually exists,
+		// which may lead to numerous importing errors.
+		// This situation also happens if Library folder is deleted from the project, which is a pretty
+		// common case, since when using version control systems, the Library folder must be excluded.
+		// 
+		// So to avoid this, in case asset database is not available, we delay loading the assets
+		// until next time.
+		//
+		// Unity *always* reimports some internal assets after the process is done, so this method
+		// is always called once again in a state when asset database is available.
+		//
+		// Checking whether AssetDatabase is initialized is done by attempting to load
+		// a known "marker" asset that should always be available. Failing to load this asset
+		// means that AssetDatabase is not initialized.
+		assetsImportedInWrongState.UnionWith(imported);
+		if (AssetDatabaseAvailabilityDetector.IsAssetDatabaseAvailable()) {
+			string[] combinedAssets = assetsImportedInWrongState.ToArray();
+			assetsImportedInWrongState.Clear();
+			ImportSpineContent(combinedAssets);
+		}
 	}
+
 	public static void ImportSpineContent (string[] imported, bool reimport = false) {
 		List<string> atlasPaths = new List<string>();
 		List<string> imagePaths = new List<string>();
@@ -409,13 +437,33 @@ public class SpineEditorUtilities : AssetPostprocessor {
 
 					string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(skeletonDataAsset));
 					string lastHash = EditorPrefs.GetString(guid + "_hash");
+					
+					// For some weird reason sometimes Unity loses the internal Object pointer,
+					// and as a result, all comparisons with null returns true.
+					// But the C# wrapper is still alive, so we can "restore" the object
+					// by reloading it from its Instance ID.
+					AtlasAsset[] skeletonDataAtlasAssets = skeletonDataAsset.atlasAssets;
+					if (skeletonDataAtlasAssets != null) {
+						for (int i = 0; i < skeletonDataAtlasAssets.Length; i++) {
+							if (!ReferenceEquals(null, skeletonDataAtlasAssets[i]) &&
+								skeletonDataAtlasAssets[i].Equals(null) &&
+								skeletonDataAtlasAssets[i].GetInstanceID() != 0
+								) {
+								skeletonDataAtlasAssets[i] = EditorUtility.InstanceIDToObject(skeletonDataAtlasAssets[i].GetInstanceID()) as AtlasAsset;
+							}
+						}
+					}
 
-					if (lastHash != skeletonDataAsset.GetSkeletonData(true).Hash) {
+					SkeletonData skeletonData = skeletonDataAsset.GetSkeletonData(true);
+					string currentHash = skeletonData != null ? skeletonData.Hash : null;
+					if (currentHash == null || lastHash != currentHash) {
 						//do any upkeep on synchronized assets
 						UpdateMecanimClips(skeletonDataAsset);
 					}
 
-					EditorPrefs.SetString(guid + "_hash", skeletonDataAsset.GetSkeletonData(true).Hash);
+					if (currentHash != null) {
+						EditorPrefs.SetString(guid + "_hash", currentHash);
+					}
 				}
 			}
 		}
@@ -716,8 +764,8 @@ public class SpineEditorUtilities : AssetPostprocessor {
 		string[] atlasLines = atlasStr.Split('\n');
 		List<string> pageFiles = new List<string>();
 		for (int i = 0; i < atlasLines.Length - 1; i++) {
-			if (atlasLines[i].Length == 0)
-				pageFiles.Add(atlasLines[i + 1]);
+			if (atlasLines[i].Trim().Length == 0)
+				pageFiles.Add(atlasLines[i + 1].Trim());
 		}
 
 		atlasAsset.materials = new Material[pageFiles.Count];
@@ -916,7 +964,8 @@ public class SpineEditorUtilities : AssetPostprocessor {
 	}
 
 	public static SkeletonAnimation InstantiateSkeletonAnimation (SkeletonDataAsset skeletonDataAsset, Skin skin = null) {
-		GameObject go = new GameObject(skeletonDataAsset.name.Replace("_SkeletonData", ""), typeof(MeshFilter), typeof(MeshRenderer), typeof(SkeletonAnimation));
+		string spineGameObjectName = string.Format("Spine GameObject ({0})", skeletonDataAsset.name.Replace("_SkeletonData", ""));
+		GameObject go = new GameObject(spineGameObjectName, typeof(MeshFilter), typeof(MeshRenderer), typeof(SkeletonAnimation));
 		SkeletonAnimation anim = go.GetComponent<SkeletonAnimation>();
 		anim.skeletonDataAsset = skeletonDataAsset;
 
@@ -952,7 +1001,7 @@ public class SpineEditorUtilities : AssetPostprocessor {
 		if (skin == null)
 			skin = data.Skins.Items[0];
 
-		anim.Reset();
+		anim.Initialize(false);
 
 		anim.skeleton.SetSkin(skin);
 		anim.initialSkinName = skin.Name;
@@ -997,7 +1046,8 @@ public class SpineEditorUtilities : AssetPostprocessor {
 	}
 
 	public static SkeletonAnimator InstantiateSkeletonAnimator (SkeletonDataAsset skeletonDataAsset, Skin skin = null) {
-		GameObject go = new GameObject(skeletonDataAsset.name.Replace("_SkeletonData", ""), typeof(MeshFilter), typeof(MeshRenderer), typeof(Animator), typeof(SkeletonAnimator));
+		string spineGameObjectName = string.Format("Spine Mecanim GameObject ({0})", skeletonDataAsset.name.Replace("_SkeletonData", ""));
+		GameObject go = new GameObject(spineGameObjectName, typeof(MeshFilter), typeof(MeshRenderer), typeof(Animator), typeof(SkeletonAnimator));
 
 		if (skeletonDataAsset.controller == null) {
 			SkeletonBaker.GenerateMecanimAnimationClips(skeletonDataAsset);
@@ -1038,7 +1088,7 @@ public class SpineEditorUtilities : AssetPostprocessor {
 		if (skin == null)
 			skin = data.Skins.Items[0];
 
-		anim.Reset();
+		anim.Initialize(false);
 
 		anim.skeleton.SetSkin(skin);
 		anim.initialSkinName = skin.Name;
@@ -1085,10 +1135,13 @@ public class SpineEditorUtilities : AssetPostprocessor {
 	static void EnableTK2D () {
 		bool added = false;
 		foreach (BuildTargetGroup group in System.Enum.GetValues(typeof(BuildTargetGroup))) {
+			if (group == BuildTargetGroup.Unknown)
+				continue;
+			
 			string defines = PlayerSettings.GetScriptingDefineSymbolsForGroup(group);
 			if (!defines.Contains(SPINE_TK2D_DEFINE)) {
 				added = true;
-				if (defines.EndsWith(";"))
+				if (defines.EndsWith(";", System.StringComparison.Ordinal))
 					defines = defines + SPINE_TK2D_DEFINE;
 				else
 					defines = defines + ";" + SPINE_TK2D_DEFINE;
@@ -1144,9 +1197,9 @@ public class SpineEditorUtilities : AssetPostprocessor {
 			return new MeshAttachment(name);
 		}
 
-		public SkinnedMeshAttachment NewSkinnedMeshAttachment (Skin skin, string name, string path) {
+		public WeightedMeshAttachment NewWeightedMeshAttachment(Skin skin, string name, string path) {
 			requirementList.Add(path);
-			return new SkinnedMeshAttachment(name);
+			return new WeightedMeshAttachment(name);
 		}
 
 		public BoundingBoxAttachment NewBoundingBoxAttachment (Skin skin, string name) {

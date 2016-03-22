@@ -30,12 +30,6 @@
  *****************************************************************************/
 
 #include <spine/spine-sfml.h>
-#include <spine/extension.h>
-#include <SFML/Graphics/Vertex.hpp>
-#include <SFML/Graphics/VertexArray.hpp>
-#include <SFML/Graphics/Texture.hpp>
-#include <SFML/Graphics/RenderTarget.hpp>
-#include <SFML/Graphics/RenderStates.hpp>
 
 #ifndef SPINE_MESH_VERTEX_COUNT_MAX
 #define SPINE_MESH_VERTEX_COUNT_MAX 1000
@@ -202,11 +196,11 @@ void SkeletonDrawable::draw (RenderTarget& target, RenderStates states) const {
 				vertexArray->append(vertex);
 			}
 
-		} else if (attachment->type == ATTACHMENT_SKINNED_MESH) {
-			SkinnedMeshAttachment* mesh = (SkinnedMeshAttachment*)attachment;
+		} else if (attachment->type == ATTACHMENT_WEIGHTED_MESH) {
+			WeightedMeshAttachment* mesh = (WeightedMeshAttachment*)attachment;
 			if (mesh->uvsCount > SPINE_MESH_VERTEX_COUNT_MAX) continue;
 			texture = (Texture*)((AtlasRegion*)mesh->rendererObject)->page->rendererObject;
-			SkinnedMeshAttachment_computeWorldVertices(mesh, slot, worldVertices);
+			WeightedMeshAttachment_computeWorldVertices(mesh, slot, worldVertices);
 
 			Uint8 r = static_cast<Uint8>(skeleton->r * slot->r * 255);
 			Uint8 g = static_cast<Uint8>(skeleton->g * slot->g * 255);

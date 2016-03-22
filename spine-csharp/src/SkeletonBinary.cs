@@ -45,8 +45,6 @@ namespace Spine {
 		public const int TIMELINE_TRANSLATE = 2;
 		public const int TIMELINE_ATTACHMENT = 3;
 		public const int TIMELINE_COLOR = 4;
-		public const int TIMELINE_FLIPX = 5;
-		public const int TIMELINE_FLIPY = 6;
 
 		public const int CURVE_LINEAR = 0;
 		public const int CURVE_STEPPED = 1;
@@ -67,7 +65,9 @@ namespace Spine {
 			Scale = 1;
 		}
 
-#if WINDOWS_STOREAPP
+		#if !(UNITY_5 || UNITY_4 || UNITY_WSA || UNITY_WP8 || UNITY_WP8_1)
+		#if WINDOWS_STOREAPP
+
 		private async Task<SkeletonData> ReadFile(string path) {
 			var folder = Windows.ApplicationModel.Package.Current.InstalledLocation;
 			using (var input = new BufferedStream(await folder.GetFileAsync(path).AsTask().ConfigureAwait(false))) {
@@ -80,20 +80,21 @@ namespace Spine {
 		public SkeletonData ReadSkeletonData (String path) {
 			return this.ReadFile(path).Result;
 		}
-#else
+		#else
 		public SkeletonData ReadSkeletonData (String path) {
-#if WINDOWS_PHONE
-			using (var input = new BufferedStream(Microsoft.Xna.Framework.TitleContainer.OpenStream(path)))
-			{
-#else
+		#if WINDOWS_PHONE
+			using (var input = new BufferedStream(Microsoft.Xna.Framework.TitleContainer.OpenStream(path))) {
+		#else
 			using (var input = new BufferedStream(new FileStream(path, FileMode.Open))) {
-#endif
+		#endif // WINDOWS_PHONE
 				SkeletonData skeletonData = ReadSkeletonData(input);
 				skeletonData.name = Path.GetFileNameWithoutExtension(path);
 				return skeletonData;
 			}
 		}
-#endif
+
+		#endif // WINDOWS_STOREAPP
+		#endif // !(UNITY)
 
 		public SkeletonData ReadSkeletonData (Stream input) {
 			if (input == null) throw new ArgumentNullException("input cannot be null.");
@@ -127,8 +128,6 @@ namespace Spine {
 				boneData.scaleY = ReadFloat(input);
 				boneData.rotation = ReadFloat(input);
 				boneData.length = ReadFloat(input) * scale;
-				boneData.flipX = ReadBoolean(input);
-				boneData.flipY = ReadBoolean(input);
 				boneData.inheritScale = ReadBoolean(input);
 				boneData.inheritRotation = ReadBoolean(input);
 				if (nonessential) ReadInt(input); // Skip bone color.
@@ -144,6 +143,17 @@ namespace Spine {
 				ikConstraintData.mix = ReadFloat(input);
 				ikConstraintData.bendDirection = ReadSByte(input);
 				skeletonData.ikConstraints.Add(ikConstraintData);
+			}
+
+			// Transform constraints.
+			for (int i = 0, n = ReadInt(input, true); i < n; i++) {
+				TransformConstraintData transformConstraintData = new TransformConstraintData(ReadString(input));
+				transformConstraintData.bone = skeletonData.bones.Items[ReadInt(input, true)];
+				transformConstraintData.target = skeletonData.bones.Items[ReadInt(input, true)];
+				transformConstraintData.translateMix = ReadFloat(input);
+				transformConstraintData.x = ReadFloat(input) * scale;
+				transformConstraintData.y = ReadFloat(input) * scale;
+				skeletonData.transformConstraints.Add(transformConstraintData);
 			}
 
 			// Slots.
@@ -266,10 +276,10 @@ namespace Spine {
 					}
 					return mesh;
 				}
-			case AttachmentType.skinnedmesh: {
+			case AttachmentType.weightedmesh: {
 					String path = ReadString(input);
 					if (path == null) path = name;
-					SkinnedMeshAttachment mesh = attachmentLoader.NewSkinnedMeshAttachment(skin, name, path);
+					WeightedMeshAttachment mesh = attachmentLoader.NewWeightedMeshAttachment(skin, name, path);
 					if (mesh == null) return null;
 					mesh.Path = path;
 					float[] uvs = ReadFloatArray(input, 1);
@@ -419,17 +429,6 @@ namespace Spine {
 							duration = Math.Max(duration, timeline.frames[frameCount * 3 - 3]);
 							break;
 						}
-					case TIMELINE_FLIPX:
-					case TIMELINE_FLIPY: {
-							FlipXTimeline timeline = timelineType == TIMELINE_FLIPX ? new FlipXTimeline(frameCount) : new FlipYTimeline(
-								frameCount);
-							timeline.boneIndex = boneIndex;
-							for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
-								timeline.SetFrame(frameIndex, ReadFloat(input), ReadBoolean(input));
-							timelines.Add(timeline);
-							duration = Math.Max(duration, timeline.frames[frameCount * 2 - 2]);
-							break;
-						}
 					}
 				}
 			}
@@ -467,7 +466,7 @@ namespace Spine {
 							if (attachment is MeshAttachment)
 								vertexCount = ((MeshAttachment)attachment).vertices.Length;
 							else
-								vertexCount = ((SkinnedMeshAttachment)attachment).weights.Length / 3 * 2;
+								vertexCount = ((WeightedMeshAttachment)attachment).weights.Length / 3 * 2;
 
 							int end = ReadInt(input, true);
 							if (end == 0) {
@@ -541,11 +540,11 @@ namespace Spine {
 				for (int i = 0; i < eventCount; i++) {
 					float time = ReadFloat(input);
 					EventData eventData = skeletonData.events.Items[ReadInt(input, true)];
-					Event e = new Event(eventData);
+					Event e = new Event(time, eventData);
 					e.Int = ReadInt(input, false);
 					e.Float = ReadFloat(input);
 					e.String = ReadBoolean(input) ? ReadString(input) : eventData.String;
-					timeline.SetFrame(i, time, e);
+					timeline.SetFrame(i, e);
 				}
 				timelines.Add(timeline);
 				duration = Math.Max(duration, timeline.frames[eventCount - 1]);
