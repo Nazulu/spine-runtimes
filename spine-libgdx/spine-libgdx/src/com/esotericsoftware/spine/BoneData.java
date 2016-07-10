@@ -34,20 +34,21 @@ package com.esotericsoftware.spine;
 import com.badlogic.gdx.graphics.Color;
 
 public class BoneData {
-	final BoneData parent;
+	final int index;
 	final String name;
+	final BoneData parent;
 	float length;
-	float x, y;
-	float rotation;
-	float scaleX = 1, scaleY = 1;
-	boolean inheritScale = true, inheritRotation = true;
+	float x, y, rotation, scaleX = 1, scaleY = 1, shearX, shearY;
+	boolean inheritRotation = true, inheritScale = true;
 
 	// Nonessential.
 	final Color color = new Color(0.61f, 0.61f, 0.61f, 1);
 
 	/** @param parent May be null. */
-	public BoneData (String name, BoneData parent) {
+	public BoneData (int index, String name, BoneData parent) {
+		if (index < 0) throw new IllegalArgumentException("index must be >= 0.");
 		if (name == null) throw new IllegalArgumentException("name cannot be null.");
+		this.index = index;
 		this.name = name;
 		this.parent = parent;
 	}
@@ -56,23 +57,30 @@ public class BoneData {
 	 * @param parent May be null. */
 	public BoneData (BoneData bone, BoneData parent) {
 		if (bone == null) throw new IllegalArgumentException("bone cannot be null.");
-		this.parent = parent;
+		index = bone.index;
 		name = bone.name;
+		this.parent = parent;
 		length = bone.length;
 		x = bone.x;
 		y = bone.y;
 		rotation = bone.rotation;
 		scaleX = bone.scaleX;
 		scaleY = bone.scaleY;
+		shearX = bone.shearX;
+		shearY = bone.shearY;
+	}
+
+	public int getIndex () {
+		return index;
+	}
+
+	public String getName () {
+		return name;
 	}
 
 	/** @return May be null. */
 	public BoneData getParent () {
 		return parent;
-	}
-
-	public String getName () {
-		return name;
 	}
 
 	public float getLength () {
@@ -133,12 +141,20 @@ public class BoneData {
 		this.scaleY = scaleY;
 	}
 
-	public boolean getInheritScale () {
-		return inheritScale;
+	public float getShearX () {
+		return shearX;
 	}
 
-	public void setInheritScale (boolean inheritScale) {
-		this.inheritScale = inheritScale;
+	public void setShearX (float shearX) {
+		this.shearX = shearX;
+	}
+
+	public float getShearY () {
+		return shearY;
+	}
+
+	public void setShearY (float shearY) {
+		this.shearY = shearY;
 	}
 
 	public boolean getInheritRotation () {
@@ -147,6 +163,14 @@ public class BoneData {
 
 	public void setInheritRotation (boolean inheritRotation) {
 		this.inheritRotation = inheritRotation;
+	}
+
+	public boolean getInheritScale () {
+		return inheritScale;
+	}
+
+	public void setInheritScale (boolean inheritScale) {
+		this.inheritScale = inheritScale;
 	}
 
 	public Color getColor () {

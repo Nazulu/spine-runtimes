@@ -620,8 +620,8 @@ function Animation.FfdTimeline.new ()
 			alpha = 1 -- Don't mix from uninitialized slot vertices.
 		end
 		slot.attachmentVerticesCount = vertexCount
-		if time >= frames[#frames - 1] then -- Time is after last frame.
-			local lastVertices = frameVertices[#frames - 1]
+		if time >= frames[#frames] then -- Time is after last frame.
+			local lastVertices = frameVertices[#frames]
 			if alpha < 1 then
 				for i = 1, vertexCount do
 					local vertex = vertices[i]

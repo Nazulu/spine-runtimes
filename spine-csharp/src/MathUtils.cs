@@ -34,6 +34,7 @@ using System;
 namespace Spine {
 	public static class MathUtils {
 		public const float PI = 3.1415927f;
+		public const float PI2 = PI * 2;
 		public const float radDeg = 180f / PI;
 		public const float degRad = PI / 180;
 
@@ -53,22 +54,22 @@ namespace Spine {
 				sin[(int)(i * degToIndex) & SIN_MASK] = (float)Math.Sin(i * degRad);
 		}
 
-		/** Returns the sine in radians from a lookup table. */
+		/// <summary>Returns the sine in radians from a lookup table.</summary>
 		static public float Sin (float radians) {
 			return sin[(int)(radians * radToIndex) & SIN_MASK];
 		}
 
-		/** Returns the cosine in radians from a lookup table. */
+		/// <summary>Returns the cosine in radians from a lookup table.</summary>
 		static public float Cos (float radians) {
 			return sin[(int)((radians + PI / 2) * radToIndex) & SIN_MASK];
 		}
-
-		/** Returns the sine in radians from a lookup table. */
+			
+		/// <summary>Returns the sine in radians from a lookup table.</summary>
 		static public float SinDeg (float degrees) {
 			return sin[(int)(degrees * degToIndex) & SIN_MASK];
 		}
-
-		/** Returns the cosine in radians from a lookup table. */
+			
+		/// <summary>Returns the cosine in radians from a lookup table.</summary>
 		static public float CosDeg (float degrees) {
 			return sin[(int)((degrees + 90) * degToIndex) & SIN_MASK];
 		}
@@ -89,6 +90,12 @@ namespace Spine {
 			}
 			atan = PI / 2 - z / (z * z + 0.28f);
 			return y < 0f ? atan - PI : atan;
+		}
+
+		static public float Clamp (float value, float min, float max) {
+			if (value < min) return min;
+			if (value > max) return max;
+			return value;
 		}
 	}
 }

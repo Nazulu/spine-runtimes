@@ -15,7 +15,6 @@ namespace Spine.Unity {
 		public static Color GetColor (this Skeleton s) { return new Color(s.r, s.g, s.b, s.a); }
 		public static Color GetColor (this RegionAttachment a) { return new Color(a.r, a.g, a.b, a.a); }
 		public static Color GetColor (this MeshAttachment a) { return new Color(a.r, a.g, a.b, a.a); }
-		public static Color GetColor (this WeightedMeshAttachment a) { return new Color(a.r, a.g, a.b, a.a);	}
 
 		public static void SetColor (this Skeleton skeleton, Color color) {
 			skeleton.A = color.a;
@@ -72,23 +71,9 @@ namespace Spine.Unity {
 			attachment.G = color.g * ByteToFloat;
 			attachment.B = color.b * ByteToFloat;
 		}
-
-		public static void SetColor (this WeightedMeshAttachment attachment, Color color) {
-			attachment.A = color.a;
-			attachment.R = color.r;
-			attachment.G = color.g;
-			attachment.B = color.b;
-		}
-
-		public static void SetColor (this WeightedMeshAttachment attachment, Color32 color) {
-			attachment.A = color.a * ByteToFloat;
-			attachment.R = color.r * ByteToFloat;
-			attachment.G = color.g * ByteToFloat;
-			attachment.B = color.b * ByteToFloat;
-		}
 		#endregion
 
-		#region Bone Position
+		#region Bone
 		public static void SetPosition (this Bone bone, Vector2 position) {
 			bone.X = position.x;
 			bone.Y = position.y;
@@ -106,8 +91,21 @@ namespace Spine.Unity {
 		public static Vector3 GetWorldPosition (this Bone bone, UnityEngine.Transform parentTransform) {		
 			return parentTransform.TransformPoint(new Vector3(bone.worldX, bone.worldY));
 		}
+
+		public static Matrix4x4 GetMatrix4x4 (this Bone bone) {
+			return new Matrix4x4 {
+				m00 = bone.a, m01 = bone.b, m03 = bone.worldX,
+				m10 = bone.c, m11 = bone.d, m13 = bone.worldY,
+				m33 = 1
+			};
+		}
 		#endregion
 
+	}
+}
+
+namespace Spine {
+	public static class SkeletonExtensions {
 		#region Posing
 		/// <summary>
 		/// Shortcut for posing a skeleton at a specific time. Time is in seconds. (frameNumber / 30f) will give you seconds.
@@ -126,11 +124,12 @@ namespace Spine.Unity {
 		/// <summary>Resets the DrawOrder to the Setup Pose's draw order</summary>
 		public static void SetDrawOrderToSetupPose (this Skeleton skeleton) {
 			var slotsItems = skeleton.slots.Items;
-			var drawOrder = skeleton.drawOrder;
+			int n = skeleton.slots.Count;
 
+			var drawOrder = skeleton.drawOrder;
 			drawOrder.Clear(false);
-			for (int i = 0, n = skeleton.slots.Count; i < n; i++)
-				drawOrder.Add(slotsItems[i]);
+			drawOrder.GrowIfNeeded(n);
+			System.Array.Copy(slotsItems, drawOrder.Items, n);
 		}
 
 		/// <summary>Resets the color of a slot to Setup Pose value.</summary>
@@ -161,13 +160,11 @@ namespace Spine.Unity {
 				timelinesItems[i].SetToSetupPose(skeleton);
 		}
 
-		// For each timeline type.
-		// Timelines know how to apply themselves based on skeleton data; They should know how to reset the skeleton back to skeleton data?
 		public static void SetToSetupPose (this Timeline timeline, Skeleton skeleton) {
 			if (timeline != null) {
 				// sorted according to assumed likelihood here
 
-				// Bone stuff
+				// Bone
 				if (timeline is RotateTimeline) {
 					var bone = skeleton.bones.Items[((RotateTimeline)timeline).boneIndex];
 					bone.rotation = bone.data.rotation;
@@ -181,13 +178,12 @@ namespace Spine.Unity {
 					bone.scaleY = bone.data.scaleY;
 
 
-				// Attachment stuff. How do you reset FFD?
-				} else if (timeline is FFDTimeline) {
-					var slot = skeleton.slots.Items[((FFDTimeline)timeline).slotIndex];
-					slot.attachmentVerticesCount = 0;	// This causes (Weighted)MeshAttachment.ComputeWorldVertices to use its internal(stateless) vertex array.
-					//slot.attachmentTime = bone.skeleton.time; // Currently inconsequential. (Spine 3.1)
-				
-				// Slot stuff. This is heavy to do every frame. Maybe not do it?
+				// Attachment
+				} else if (timeline is DeformTimeline) {
+					var slot = skeleton.slots.Items[((DeformTimeline)timeline).slotIndex];
+					slot.attachmentVertices.Clear(false);
+
+				// Slot
 				} else if (timeline is AttachmentTimeline) {
 					skeleton.SetSlotAttachmentToSetupPose(((AttachmentTimeline)timeline).slotIndex);
 
@@ -195,7 +191,7 @@ namespace Spine.Unity {
 					skeleton.slots.Items[((ColorTimeline)timeline).slotIndex].SetColorToSetupPose();
 
 
-				// Constraint Stuff
+				// Constraint
 				} else if (timeline is IkConstraintTimeline) {
 					var ikTimeline = (IkConstraintTimeline)timeline;
 					var ik = skeleton.ikConstraints.Items[ikTimeline.ikConstraintIndex];
@@ -203,15 +199,13 @@ namespace Spine.Unity {
 					ik.bendDirection = data.bendDirection;
 					ik.mix = data.mix;
 
-				// Skeleton stuff. Skeleton.SetDrawOrderToSetupPose. This is heavy to do every frame. Maybe not do it?
+				// Skeleton
 				} else if (timeline is DrawOrderTimeline) {
 					skeleton.SetDrawOrderToSetupPose();
-
 
 				}
 
 			}
-
 
 		}
 		#endregion

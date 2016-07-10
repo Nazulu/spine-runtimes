@@ -35,10 +35,9 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.utils.Array;
 import com.esotericsoftware.spine.attachments.Attachment;
-import com.esotericsoftware.spine.attachments.MeshAttachment;
 import com.esotericsoftware.spine.attachments.RegionAttachment;
 import com.esotericsoftware.spine.attachments.SkeletonAttachment;
-import com.esotericsoftware.spine.attachments.WeightedMeshAttachment;
+import com.esotericsoftware.spine.attachments.MeshAttachment;
 
 public class SkeletonMeshRenderer extends SkeletonRenderer<PolygonSpriteBatch> {
 	static private final short[] quadTriangles = {0, 1, 2, 2, 3, 0};
@@ -67,12 +66,6 @@ public class SkeletonMeshRenderer extends SkeletonRenderer<PolygonSpriteBatch> {
 				triangles = mesh.getTriangles();
 				texture = mesh.getRegion().getTexture();
 
-			} else if (attachment instanceof WeightedMeshAttachment) {
-				WeightedMeshAttachment mesh = (WeightedMeshAttachment)attachment;
-				vertices = mesh.updateWorldVertices(slot, premultipliedAlpha);
-				triangles = mesh.getTriangles();
-				texture = mesh.getRegion().getTexture();
-
 			} else if (attachment instanceof SkeletonAttachment) {
 				Skeleton attachmentSkeleton = ((SkeletonAttachment)attachment).getSkeleton();
 				if (attachmentSkeleton == null) continue;
@@ -84,6 +77,7 @@ public class SkeletonMeshRenderer extends SkeletonRenderer<PolygonSpriteBatch> {
 				attachmentSkeleton.setPosition(skeleton.getX() + bone.getWorldX(), skeleton.getY() + bone.getWorldY());
 				// rootBone.setScaleX(1 + bone.getWorldScaleX() - oldScaleX);
 				// rootBone.setScaleY(1 + bone.getWorldScaleY() - oldScaleY);
+				// Set shear.
 				rootBone.setRotation(oldRotation + bone.getWorldRotationX());
 				attachmentSkeleton.updateWorldTransform();
 

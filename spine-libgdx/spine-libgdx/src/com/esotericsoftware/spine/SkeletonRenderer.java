@@ -34,17 +34,12 @@ package com.esotericsoftware.spine;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.utils.Array;
 import com.esotericsoftware.spine.attachments.Attachment;
-import com.esotericsoftware.spine.attachments.MeshAttachment;
 import com.esotericsoftware.spine.attachments.RegionAttachment;
 import com.esotericsoftware.spine.attachments.SkeletonAttachment;
-import com.esotericsoftware.spine.attachments.WeightedMeshAttachment;
+import com.esotericsoftware.spine.attachments.MeshAttachment;
 
 public class SkeletonRenderer<T extends Batch> {
 	boolean premultipliedAlpha;
-
-	public SkeletonRenderer () {
-		super();
-	}
 
 	public void draw (T batch, Skeleton skeleton) {
 		boolean premultipliedAlpha = this.premultipliedAlpha;
@@ -64,7 +59,7 @@ public class SkeletonRenderer<T extends Batch> {
 				}
 				batch.draw(regionAttachment.getRegion().getTexture(), vertices, 0, 20);
 
-			} else if (attachment instanceof MeshAttachment || attachment instanceof WeightedMeshAttachment) {
+			} else if (attachment instanceof MeshAttachment) {
 				throw new RuntimeException("SkeletonMeshRenderer is required to render meshes.");
 
 			} else if (attachment instanceof SkeletonAttachment) {
@@ -78,6 +73,7 @@ public class SkeletonRenderer<T extends Batch> {
 				attachmentSkeleton.setPosition(skeleton.getX() + bone.getWorldX(), skeleton.getY() + bone.getWorldY());
 				// rootBone.setScaleX(1 + bone.getWorldScaleX() - oldScaleX);
 				// rootBone.setScaleY(1 + bone.getWorldScaleY() - oldScaleY);
+				// Set shear.
 				rootBone.setRotation(oldRotation + bone.getWorldRotationX());
 				attachmentSkeleton.updateWorldTransform();
 
