@@ -30,15 +30,16 @@
  *****************************************************************************/
 
 using System;
-using System.Collections.Generic;
 
 namespace Spine {
 	public class IkConstraint : IUpdatable {
 		internal IkConstraintData data;
 		internal ExposedList<Bone> bones = new ExposedList<Bone>();
 		internal Bone target;
-		internal int bendDirection;
 		internal float mix;
+		internal int bendDirection;
+
+		internal int level;
 
 		public IkConstraintData Data { get { return data; } }
 		public ExposedList<Bone> Bones { get { return bones; } }
@@ -47,8 +48,8 @@ namespace Spine {
 		public float Mix { get { return mix; } set { mix = value; } }
 
 		public IkConstraint (IkConstraintData data, Skeleton skeleton) {
-			if (data == null) throw new ArgumentNullException("data cannot be null.");
-			if (skeleton == null) throw new ArgumentNullException("skeleton cannot be null.");
+			if (data == null) throw new ArgumentNullException("data", "data cannot be null.");
+			if (skeleton == null) throw new ArgumentNullException("skeleton", "skeleton cannot be null.");
 			this.data = data;
 			mix = data.mix;
 			bendDirection = data.bendDirection;
@@ -83,113 +84,127 @@ namespace Spine {
 		/// <summary>Adjusts the bone rotation so the tip is as close to the target position as possible. The target is specified
 		/// in the world coordinate system.</summary>
 		static public void Apply (Bone bone, float targetX, float targetY, float alpha) {
-			float parentRotation = bone.parent == null ? 0 : bone.parent.WorldRotationX;
-			float rotation = bone.rotation;
-			float rotationIK = MathUtils.Atan2(targetY - bone.worldY, targetX - bone.worldX) * MathUtils.radDeg - parentRotation;
-			if ((bone.worldSignX != bone.worldSignY) != (bone.skeleton.flipX != (bone.skeleton.flipY != Bone.yDown)))
-				rotationIK = 360 - rotationIK;
-			if (rotationIK > 180) rotationIK -= 360;
+			Bone pp = bone.parent;
+			float id = 1 / (pp.a * pp.d - pp.b * pp.c);
+			float x = targetX - pp.worldX, y = targetY - pp.worldY;
+			float tx = (x * pp.d - y * pp.b) * id - bone.x, ty = (y * pp.a - x * pp.c) * id - bone.y;
+			float rotationIK = MathUtils.Atan2(ty, tx) * MathUtils.radDeg - bone.shearX - bone.rotation;
+			if (bone.scaleX < 0) rotationIK += 180;
+			if (rotationIK > 180)
+				rotationIK -= 360;
 			else if (rotationIK < -180) rotationIK += 360;
-			bone.UpdateWorldTransform(bone.x, bone.y, rotation + (rotationIK - rotation) * alpha, bone.scaleX, bone.scaleY);
+			bone.UpdateWorldTransform(bone.x, bone.y, bone.rotation + rotationIK * alpha, bone.scaleX, bone.scaleY,
+				bone.shearX, bone.shearY);
 		}
 
 		/// <summary>Adjusts the parent and child bone rotations so the tip of the child is as close to the target position as
 		/// possible. The target is specified in the world coordinate system.</summary>
 		/// <param name="child">A direct descendant of the parent bone.</param>
 		static public void Apply (Bone parent, Bone child, float targetX, float targetY, int bendDir, float alpha) {
-			if (alpha == 0) return;
-			float px = parent.x, py = parent.y, psx = parent.scaleX, psy = parent.scaleY, csx = child.scaleX, cy = child.y;
-			int offset1, offset2, sign2;
+			if (alpha == 0) {
+				child.UpdateWorldTransform ();
+				return;
+			}
+			float px = parent.x, py = parent.y, psx = parent.scaleX, psy = parent.scaleY, csx = child.scaleX;
+			int os1, os2, s2;
 			if (psx < 0) {
 				psx = -psx;
-				offset1 = 180;
-				sign2 = -1;
+				os1 = 180;
+				s2 = -1;
 			} else {
-				offset1 = 0;
-				sign2 = 1;
+				os1 = 0;
+				s2 = 1;
 			}
 			if (psy < 0) {
 				psy = -psy;
-				sign2 = -sign2;
+				s2 = -s2;
 			}
 			if (csx < 0) {
 				csx = -csx;
-				offset2 = 180;
+				os2 = 180;
 			} else
-				offset2 = 0;
-			Bone pp = parent.parent;
-			float tx, ty, dx, dy;
-			if (pp == null) {
-				tx = targetX - px;
-				ty = targetY - py;
-				dx = child.worldX - px;
-				dy = child.worldY - py;
+				os2 = 0;
+			float cx = child.x, cy, cwx, cwy, a = parent.a, b = parent.b, c = parent.c, d = parent.d;
+			bool u = Math.Abs(psx - psy) <= 0.0001f;
+			if (!u) {
+				cy = 0;
+				cwx = a * cx + parent.worldX;
+				cwy = c * cx + parent.worldY;
 			} else {
-				float a = pp.a, b = pp.b, c = pp.c, d = pp.d, invDet = 1 / (a * d - b * c);
-				float wx = pp.worldX, wy = pp.worldY, x = targetX - wx, y = targetY - wy;
-				tx = (x * d - y * b) * invDet - px;
-				ty = (y * a - x * c) * invDet - py;
-				x = child.worldX - wx;
-				y = child.worldY - wy;
-				dx = (x * d - y * b) * invDet - px;
-				dy = (y * a - x * c) * invDet - py;
+				cy = child.y;
+				cwx = a * cx + b * cy + parent.worldX;
+				cwy = c * cx + d * cy + parent.worldY;
 			}
+			Bone pp = parent.parent;
+			a = pp.a;
+			b = pp.b;
+			c = pp.c;
+			d = pp.d;
+			float id = 1 / (a * d - b * c), x = targetX - pp.worldX, y = targetY - pp.worldY;
+			float tx = (x * d - y * b) * id - px, ty = (y * a - x * c) * id - py;
+			x = cwx - pp.worldX;
+			y = cwy - pp.worldY;
+			float dx = (x * d - y * b) * id - px, dy = (y * a - x * c) * id - py;
 			float l1 = (float)Math.Sqrt(dx * dx + dy * dy), l2 = child.data.length * csx, a1, a2;
-			if (Math.Abs(psx - psy) <= 0.0001f) {
+			if (u) {
 				l2 *= psx;
 				float cos = (tx * tx + ty * ty - l1 * l1 - l2 * l2) / (2 * l1 * l2);
-				if (cos < -1) cos = -1;
+				if (cos < -1)
+					cos = -1;
 				else if (cos > 1) cos = 1;
 				a2 = (float)Math.Acos(cos) * bendDir;
-				float a = l1 + l2 * cos, o = l2 * MathUtils.Sin(a2);
-				a1 = MathUtils.Atan2(ty * a - tx * o, tx * a + ty * o);
+				a = l1 + l2 * cos;
+				b = l2 * MathUtils.Sin(a2);
+				a1 = MathUtils.Atan2(ty * a - tx * b, tx * a + ty * b);
 			} else {
-				cy = 0;
-				float a = psx * l2, b = psy * l2, ta = MathUtils.Atan2(ty, tx);
-				float aa = a * a, bb = b * b, ll = l1 * l1, dd = tx * tx + ty * ty;
-				float c0 = bb * ll + aa * dd - aa * bb, c1 = -2 * bb * l1, c2 = bb - aa;
-				float d = c1 * c1 - 4 * c2 * c0;
+				a = psx * l2;
+				b = psy * l2;
+				float aa = a * a, bb = b * b, dd = tx * tx + ty * ty, ta = MathUtils.Atan2(ty, tx);
+				c = bb * l1 * l1 + aa * dd - aa * bb;
+				float c1 = -2 * bb * l1, c2 = bb - aa;
+				d = c1 * c1 - 4 * c2 * c;
 				if (d >= 0) {
 					float q = (float)Math.Sqrt(d);
 					if (c1 < 0) q = -q;
 					q = -(c1 + q) / 2;
-					float r0 = q / c2, r1 = c0 / q;
+					float r0 = q / c2, r1 = c / q;
 					float r = Math.Abs(r0) < Math.Abs(r1) ? r0 : r1;
 					if (r * r <= dd) {
-						float y1 = (float)Math.Sqrt(dd - r * r) * bendDir;
-						a1 = ta - MathUtils.Atan2(y1, r);
-						a2 = MathUtils.Atan2(y1 / psy, (r - l1) / psx);
+						y = (float)Math.Sqrt(dd - r * r) * bendDir;
+						a1 = ta - MathUtils.Atan2(y, r);
+						a2 = MathUtils.Atan2(y / psy, (r - l1) / psx);
 						goto outer;
 					}
 				}
 				float minAngle = 0, minDist = float.MaxValue, minX = 0, minY = 0;
 				float maxAngle = 0, maxDist = 0, maxX = 0, maxY = 0;
-				float x = l1 + a, dist = x * x;
-				if (dist > maxDist) {
+				x = l1 + a;
+				d = x * x;
+				if (d > maxDist) {
 					maxAngle = 0;
-					maxDist = dist;
+					maxDist = d;
 					maxX = x;
 				}
 				x = l1 - a;
-				dist = x * x;
-				if (dist < minDist) {
+				d = x * x;
+				if (d < minDist) {
 					minAngle = MathUtils.PI;
-					minDist = dist;
+					minDist = d;
 					minX = x;
 				}
 				float angle = (float)Math.Acos(-a * l1 / (aa - bb));
 				x = a * MathUtils.Cos(angle) + l1;
-				float y = b * MathUtils.Sin(angle);
-				dist = x * x + y * y;
-				if (dist < minDist) {
+				y = b * MathUtils.Sin(angle);
+				d = x * x + y * y;
+				if (d < minDist) {
 					minAngle = angle;
-					minDist = dist;
+					minDist = d;
 					minX = x;
 					minY = y;
 				}
-				if (dist > maxDist) {
+				if (d > maxDist) {
 					maxAngle = angle;
-					maxDist = dist;
+					maxDist = d;
 					maxX = x;
 					maxY = y;
 				}
@@ -201,18 +216,20 @@ namespace Spine {
 					a2 = maxAngle * bendDir;
 				}
 			}
-		outer:
-			float offset = MathUtils.Atan2(cy, child.x) * sign2;
-			a1 = (a1 - offset) * MathUtils.radDeg + offset1;
-			a2 = (a2 + offset) * MathUtils.radDeg * sign2 + offset2;
-			if (a1 > 180) a1 -= 360;
-			else if (a1 < -180) a1 += 360;
-			if (a2 > 180) a2 -= 360;
-			else if (a2 < -180) a2 += 360;
+			outer:
+			float os = MathUtils.Atan2(cy, cx) * s2;
 			float rotation = parent.rotation;
-			parent.UpdateWorldTransform(parent.x, parent.y, rotation + (a1 - rotation) * alpha, parent.scaleX, parent.scaleY);
+			a1 = (a1 - os) * MathUtils.radDeg + os1 - rotation;
+			if (a1 > 180)
+				a1 -= 360;
+			else if (a1 < -180) a1 += 360;
+			parent.UpdateWorldTransform(px, py, rotation + a1 * alpha, parent.scaleX, parent.scaleY, 0, 0);
 			rotation = child.rotation;
-			child.UpdateWorldTransform(child.x, cy, rotation + (a2 - rotation) * alpha, child.scaleX, child.scaleY);
+			a2 = ((a2 + os) * MathUtils.radDeg - child.shearX) * s2 + os2 - rotation;
+			if (a2 > 180)
+				a2 -= 360;
+			else if (a2 < -180) a2 += 360;
+			child.UpdateWorldTransform(cx, cy, rotation + a2 * alpha, child.scaleX, child.scaleY, child.shearX, child.shearY);
 		}
 	}
 }

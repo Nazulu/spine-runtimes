@@ -145,7 +145,7 @@ static int indexOf (const char** array, int count, Str* str) {
 	int i;
 	for (i = count - 1; i >= 0; i--)
 		if (strncmp(array[i], str->begin, length) == 0) return i;
-	return -1;
+	return 0;
 }
 
 static int equals (Str* str, const char* other) {
@@ -161,8 +161,8 @@ static spAtlas* abortAtlas (spAtlas* self) {
 	return 0;
 }
 
-static const char* formatNames[] = {"Alpha", "Intensity", "LuminanceAlpha", "RGB565", "RGBA4444", "RGB888", "RGBA8888"};
-static const char* textureFilterNames[] = {"Nearest", "Linear", "MipMap", "MipMapNearestNearest", "MipMapLinearNearest",
+static const char* formatNames[] = {"", "Alpha", "Intensity", "LuminanceAlpha", "RGB565", "RGBA4444", "RGB888", "RGBA8888"};
+static const char* textureFilterNames[] = {"", "Nearest", "Linear", "MipMap", "MipMapNearestNearest", "MipMapLinearNearest",
 		"MipMapNearestLinear", "MipMapLinearLinear"};
 
 spAtlas* spAtlas_create (const char* begin, int length, const char* dir, void* rendererObject) {
