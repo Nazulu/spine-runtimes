@@ -29,27 +29,14 @@
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
-package spine.starling {
+package spine.attachments {
 
-import starling.display.Image;
-import starling.textures.Texture;
-import starling.utils.VertexData;
+public dynamic class PathAttachment extends VertexAttachment {
+	public var lengths:Vector.<Number>;
+	public var closed:Boolean, constantSpeed:Boolean;
 
-public class SkeletonImage extends Image {
-	public function SkeletonImage (texture:Texture) {
-		super(texture);
-	}
-
-	public function get vertexData () : VertexData {
-		return mVertexData;
-	}
-
-	public function updateVertices () : void {
-		onVertexDataChanged();
-	}
-
-	override public function get tinted () : Boolean {
-		return true;
+	public function PathAttachment (name:String) {
+		super(name);
 	}
 }
 
