@@ -101,6 +101,7 @@ void spPathConstraint_apply (spPathConstraint* self) {
 		self->spacesCount = spacesCount;
 	}
 	spaces = self->spaces;
+	spaces[0] = 0;
 	lengths = 0;
 	spacing = self->spacing;
 	if (scale || lengthSpacing) {
@@ -309,6 +310,7 @@ float* spPathConstraint_computeWorldPositions(spPathConstraint* self, spPathAtta
 			self->world = MALLOC(float, verticesLength);
 			self->worldCount = verticesLength;
 		}
+		world = self->world;
 		spPathAttachment_computeWorldVertices1(path, target, 2, verticesLength, world, 0);
 	}
 
